@@ -68,11 +68,11 @@ function run (args)
    }
    config.app(c, "ddos", DDoS, { rules = rules, block_period = 20 })
 
-   config.app(c, "nic0", intel_app.Intel82599, { pciaddr = "0000:02:00.0" })
-   config.app(c, "nic1", intel_app.Intel82599, { pciaddr = "0000:02:00.1" })
+   -- Use one NIC: Perform DDoS logic and then retransmit packets back again
+   config.app(c, "nic0", intel_app.Intel82599, { pciaddr = "0000:05:00.0" })
 
    config.link(c, "nic0.tx -> ddos.input")
-   config.link(c, "ddos.output -> nic1.rx")
+   config.link(c, "ddos.output -> nic0.rx")
 
    app.configure(c)
 
@@ -86,9 +86,13 @@ function run (args)
 	  'repeating'
    ))
 
-   buffer.preallocate(100000)
-   app.main()
-
+   buffer.preallocate(10000)
+   local p = require("jit.p")
+   p.start("v2F")
+   app.main({duration=10})
+   p.stop()
+   app.app_table["ddos"]:report()
+   app.report_each_app()
 end
 
 run(main.parameters)
